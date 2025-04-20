@@ -1,4 +1,5 @@
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.function.Consumer;
 
@@ -23,6 +24,7 @@ public class GuiServer extends Application{
 	
 	ListView<String> listItems;
 	ListView<String> listUsers;
+	ArrayList<Integer> users;
 
 	HBox lists;
 	
@@ -43,10 +45,12 @@ public class GuiServer extends Application{
 					case NEWUSER:
 						listUsers.getItems().add(String.valueOf(data.recipient));
 						listItems.getItems().add(data.recipient + " has joined!");
+						users.add(data.recipient);
 						break;
 					case DISCONNECT:
 						listUsers.getItems().remove(String.valueOf(data.recipient));
 						listItems.getItems().add(data.recipient + " has disconnected!");
+						users.remove(data.recipient);
 				}
 			});
 		});

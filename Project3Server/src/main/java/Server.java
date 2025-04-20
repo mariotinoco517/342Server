@@ -68,7 +68,8 @@ public class Server{
 			this.count = count;
 		}
 			
-		public void updateClients(Message message) {
+		public void updateClients(Message message)
+		{
 			switch(message.type){
 				case TEXT:
 					for(ClientThread t: clients){
@@ -81,62 +82,81 @@ public class Server{
 						}
 					}
 					break;
-					case NEWUSER:
-						for(ClientThread t : clients) {
-							if(this != t) {
-								try {
-									t.out.writeObject(message);
-								} catch (Exception e) {
-									System.err.println("New User Error");
-								}
+				case NEWUSER:
+					ArrayList<Integer> toSend = new ArrayList<>();
+					for(ClientThread t : clients) {
+						if(this != t) {
+							try {
+								toSend.add(t.count);
+								t.out.writeObject(message);
+							} catch (Exception e) {
+								System.err.println("New User Error");
 							}
 						}
+					}
+					callback.accept(new Message(toSend));
+
 					break;
-					case DISCONNECT:
-						for(ClientThread t : clients) {
+
+				case DISCONNECT:
+					for(ClientThread t : clients) {
+						try {
+							t.out.writeObject(message);
+						} catch (Exception e) {
+							System.err.println("New User Error");
+						}
+					}
+				case USERS:
+					for(ClientThread t : clients) {
+						if(this == t) {
 							try {
 								t.out.writeObject(message);
 							} catch (Exception e) {
 								System.err.println("New User Error");
 							}
 						}
-
-				}
-
+					}
 			}
-			
-			public void run(){
-					
+		}
+
+		public void run(){
+
+			try {
+				in = new ObjectInputStream(connection.getInputStream());
+				out = new ObjectOutputStream(connection.getOutputStream());
+				connection.setTcpNoDelay(true);
+			}
+			catch(Exception e) {
+				System.out.println("Streams not open");
+			}
+
+			updateClients(new Message(count,true));
+			ArrayList<Integer> toSend = new ArrayList<>();
+			for(ClientThread t : clients) {
+				if(this != t) {
+					toSend.add(t.count);
+				}
+			}
+			updateClients(new Message(toSend));
+
+			while(true) {
 				try {
-					in = new ObjectInputStream(connection.getInputStream());
-					out = new ObjectOutputStream(connection.getOutputStream());
-					connection.setTcpNoDelay(true);	
+					Message data = (Message) in.readObject();
+					callback.accept(data);
+					updateClients(data);
 				}
 				catch(Exception e) {
-					System.out.println("Streams not open");
+					e.printStackTrace();
+					Message discon = new Message(count, false);
+					callback.accept(discon);
+					updateClients(discon);
+					clients.remove(this);
+					break;
 				}
-				
-				updateClients(new Message(count,true));
-					
-				 while(true) {
-					    try {
-					    	Message data = (Message) in.readObject();
-					    	callback.accept(data);
-							updateClients(data);
-						}
-					    catch(Exception e) {
-							e.printStackTrace();
-							Message discon = new Message(count, false);
-					    	callback.accept(discon);
-					    	updateClients(discon);
-					    	clients.remove(this);
-					    	break;
-					    }
-					}
-				}//end of run
-			
-			
-		}//end of client thread
+			}
+		}//end of run
+
+	}//end of client thread
 }
 
 
