@@ -1,9 +1,8 @@
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Scanner;
 import java.util.function.Consumer;
 
 import javafx.application.Platform;
@@ -106,6 +105,7 @@ public class Server{
 							System.err.println("New User Error");
 						}
 					}
+					break;
 				case USERS:
 					for(ClientThread t : clients) {
 						if(this == t) {
@@ -116,6 +116,74 @@ public class Server{
 							}
 						}
 					}
+					break;
+				case VALIDNAME:
+					int code = 0;
+					String attemptedUser = message.message.substring(0, message.message.indexOf(" "));
+					String attemptedPass = message.message.substring(message.message.indexOf(" ") + 1);
+
+					System.out.println(message.message);
+					try{
+						File f = new File("src/main/java/Users.txt");
+						Scanner myReader = new Scanner(f);
+
+						//default code when attempting to log in with invalid user/password combo
+						code = 404;
+
+
+						//loops through Users.txt to find for same username
+						while(myReader.hasNextLine()){
+							String line = myReader.nextLine();
+							String user = line.substring(0, line.indexOf(" "));
+
+							if(user.equals(attemptedUser)) {
+								//client is attempting to create account with existing username
+								if(message.recipient == 0){
+									code = 414;
+									break;
+								}
+								String pass = line.substring(line.indexOf(" ") + 1);
+								//client gave valid username and password combo when logging in
+								if(pass.equals(attemptedPass)) {
+									if(message.recipient == 1){
+										code = 1;
+									}
+
+								}
+								else{//client gave valid username but invalid password when logging in
+									if(message.recipient == 1){
+										code = -1;
+									}
+								}
+								break;
+							}
+						}
+
+					}catch(FileNotFoundException e){
+						System.err.println("USER FILES NOT FOUND REALLY BIG ISSUE");
+					}
+					if(code == 404 && message.recipient == 0){
+						try{
+							FileWriter myWriter = new FileWriter("src/main/java/Users.txt", true);
+							myWriter.write(attemptedUser + " " + attemptedPass + "\n");
+							myWriter.close();
+							code = 1;
+						}catch(IOException e){
+							System.err.println("COULDN'T OPEN USERS FILE");
+						}
+					}
+					message.recipient = code;
+					for(ClientThread t : clients) {
+						if(this == t) {
+							try{
+								t.out.writeObject(message);
+							}catch(Exception e){
+								System.err.println("VALIDATION ERROR");
+							}
+
+						}
+					}
+					break;
 			}
 		}
 

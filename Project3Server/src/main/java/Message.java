@@ -38,5 +38,11 @@ public class Message implements Serializable {
         type = MessageType.USERS;
         users = user;
     }
+
+    public Message(String username, String password, int ForC){
+        type = MessageType.VALIDNAME;
+        message = username + " " + password;
+        recipient = ForC;
+    }
 }
 

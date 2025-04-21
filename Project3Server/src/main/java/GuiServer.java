@@ -1,6 +1,9 @@
 
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Scanner;
 import java.util.function.Consumer;
 
 import javafx.application.Application;
@@ -51,6 +54,7 @@ public class GuiServer extends Application{
 						listUsers.getItems().remove(String.valueOf(data.recipient));
 						listItems.getItems().add(data.recipient + " has disconnected!");
 						users.remove(data.recipient);
+						break;
 				}
 			});
 		});
