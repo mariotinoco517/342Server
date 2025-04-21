@@ -55,6 +55,7 @@ public class GuiServer extends Application{
 						listItems.getItems().add(data.recipient + " has disconnected!");
 						users.remove(data.recipient);
 						break;
+					//case PLAYERMOVE: still figuring out if this fits in here
 				}
 			});
 		});
@@ -88,7 +89,4 @@ public class GuiServer extends Application{
 		primaryStage.show();
 		
 	}
-
-
-
 }

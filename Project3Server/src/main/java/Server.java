@@ -184,6 +184,10 @@ public class Server{
 						}
 					}
 					break;
+
+				case PLAYERMOVE:
+					//implementation of game logic
+					break;
 			}
 		}
 
