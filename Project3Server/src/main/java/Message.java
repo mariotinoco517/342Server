@@ -2,47 +2,56 @@ import javafx.scene.control.ListView;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 public class Message implements Serializable {
     static final long serialVersionUID = 42L;
     MessageType type;
     String message;
-    ArrayList<Integer> users;
-    int recipient;
+    HashMap<String, Integer> loggedInClient;
+    int code;
+    String recipient;
 
-    public Message(int i, boolean connect){
-        if(connect) {
+    public Message(int i, int connect){
+        if(connect == 1) {
             type = MessageType.NEWUSER;
             message = "User "+i+" has joined!";
-            recipient = i;
-        } else {
+            code = i;
+        }else if(connect == 0){
             type = MessageType.DISCONNECT;
             message = "User "+i+" has disconnected!";
-            recipient = i;
+            code = i;
         }
     }
 
-    public Message(String mess){
-        type = MessageType.TEXT;
-        message = mess;
-        recipient = -1;
+    public Message(String mess, int identifier){
+        if(identifier == 1){
+            type = MessageType.TEXT;
+            message = mess;
+            code = -1;
+        }else if(identifier == 2){
+            type = MessageType.LOGGEDIN;
+            message = mess;
+        }
+
     }
 
-    public Message(int rec, String mess){
+    public Message(String rec, String mess){
         type = MessageType.TEXT;
         message = mess;
         recipient = rec;
+        code = 1;
     }
 
-    public Message(ArrayList<Integer> user){
+    public Message(HashMap<String, Integer> user){
         type = MessageType.USERS;
-        users = user;
+        loggedInClient = user;
     }
 
     public Message(String username, String password, int ForC){
         type = MessageType.VALIDNAME;
         message = username + " " + password;
-        recipient = ForC;
+        code = ForC;
     }
 }
 

@@ -2,6 +2,7 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
@@ -16,6 +17,8 @@ public class Server{
 
 	int count = 1;	
 	ArrayList<ClientThread> clients = new ArrayList<ClientThread>();
+//	ArrayList<ClientThread> loggedInClients = new ArrayList<>();
+	HashMap<String, Integer> loggedInClient = new HashMap<>();
 	TheServer server;
 	private Consumer<Message> callback;
 	
@@ -31,24 +34,21 @@ public class Server{
 	public class TheServer extends Thread{
 		
 		public void run() {
-		
+
 			try(ServerSocket mysocket = new ServerSocket(5555);){
 		    	System.out.println("Server is waiting for a client!");
-		  
-			
 		    	while(true) {
-		
+					//creates new clients and adds to clients ArrayList
 					ClientThread c = new ClientThread(mysocket.accept(), count);
-					callback.accept(new Message(count,true));
+					callback.accept(new Message(count,1));
 					clients.add(c);
 					c.start();
 				
 					count++;
-				
 			    }
 			}//end of try
 			catch(Exception e) {
-				callback.accept(new Message("Server did not launch"));
+				callback.accept(new Message("Server did not launch", 1));
 			}
 		}//end of while
 	}
@@ -59,6 +59,7 @@ public class Server{
 		
 		Socket connection;
 		int count;
+		String name;
 		ObjectInputStream in;
 		ObjectOutputStream out;
 			
@@ -72,7 +73,8 @@ public class Server{
 			switch(message.type){
 				case TEXT:
 					for(ClientThread t: clients){
-						if(message.recipient==-1 || message.recipient==t.count ) {
+						//if code is to send to all or threads name matches send text
+						if(message.recipient.equals("Send to All") || message.recipient.equals(t.name) ) {
 							try {
 								t.out.writeObject(message);
 							} catch (Exception e) {
@@ -82,22 +84,19 @@ public class Server{
 					}
 					break;
 				case NEWUSER:
-					ArrayList<Integer> toSend = new ArrayList<>();
+					//Updates existing clients about new client connection
 					for(ClientThread t : clients) {
 						if(this != t) {
 							try {
-								toSend.add(t.count);
 								t.out.writeObject(message);
 							} catch (Exception e) {
 								System.err.println("New User Error");
 							}
 						}
 					}
-					callback.accept(new Message(toSend));
-
 					break;
-
 				case DISCONNECT:
+					//tells remaining clients of a disconnected client
 					for(ClientThread t : clients) {
 						try {
 							t.out.writeObject(message);
@@ -107,6 +106,7 @@ public class Server{
 					}
 					break;
 				case USERS:
+					//sends array of existing clients to new client
 					for(ClientThread t : clients) {
 						if(this == t) {
 							try {
@@ -138,20 +138,22 @@ public class Server{
 
 							if(user.equals(attemptedUser)) {
 								//client is attempting to create account with existing username
-								if(message.recipient == 0){
+								if(message.code == 0){
 									code = 414;
 									break;
 								}
 								String pass = line.substring(line.indexOf(" ") + 1);
 								//client gave valid username and password combo when logging in
 								if(pass.equals(attemptedPass)) {
-									if(message.recipient == 1){
+									if(message.code == 1){
+										loggedInClient.put(attemptedUser, code);
+//										updateClients(new Message(loggedInClient));
 										code = 1;
 									}
 
 								}
 								else{//client gave valid username but invalid password when logging in
-									if(message.recipient == 1){
+									if(message.code == 1){
 										code = -1;
 									}
 								}
@@ -162,17 +164,20 @@ public class Server{
 					}catch(FileNotFoundException e){
 						System.err.println("USER FILES NOT FOUND REALLY BIG ISSUE");
 					}
-					if(code == 404 && message.recipient == 0){
+					//user is attempting to create an account with a new username
+					if(code == 404 && message.code == 0){
 						try{
 							FileWriter myWriter = new FileWriter("src/main/java/Users.txt", true);
 							myWriter.write(attemptedUser + " " + attemptedPass + "\n");
 							myWriter.close();
 							code = 1;
+							loggedInClient.put(attemptedUser, code);
+//							updateClients(new Message(loggedInClient));
 						}catch(IOException e){
 							System.err.println("COULDN'T OPEN USERS FILE");
 						}
 					}
-					message.recipient = code;
+					message.code = code;
 					for(ClientThread t : clients) {
 						if(this == t) {
 							try{
@@ -182,11 +187,18 @@ public class Server{
 							}
 
 						}
+						if(this != t){
+							try{
+								t.out.writeObject(new Message(attemptedUser, 2));
+							}catch(Exception e){
+								System.err.println("VALIDATION ERROR");
+							}
+						}
 					}
 					break;
 
 				case PLAYERMOVE:
-					//implementation of game logic
+					//todo implementation of game logic
 					break;
 			}
 		}
@@ -202,14 +214,11 @@ public class Server{
 				System.out.println("Streams not open");
 			}
 
-			updateClients(new Message(count,true));
-			ArrayList<Integer> toSend = new ArrayList<>();
-			for(ClientThread t : clients) {
-				if(this != t) {
-					toSend.add(t.count);
-				}
-			}
-			updateClients(new Message(toSend));
+			//update existing clients of new client connection
+			updateClients(new Message(count,1));
+
+			//gets list of existing clients and send to new client
+			updateClients(new Message(loggedInClient));
 
 			while(true) {
 				try {
@@ -219,7 +228,7 @@ public class Server{
 				}
 				catch(Exception e) {
 					e.printStackTrace();
-					Message discon = new Message(count, false);
+					Message discon = new Message(count, 0);
 					callback.accept(discon);
 					updateClients(discon);
 					clients.remove(this);

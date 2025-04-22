@@ -27,7 +27,7 @@ public class GuiServer extends Application{
 	
 	ListView<String> listItems;
 	ListView<String> listUsers;
-	ArrayList<Integer> users;
+	ArrayList<Integer> users = new ArrayList<>();
 
 	HBox lists;
 	
@@ -39,21 +39,23 @@ public class GuiServer extends Application{
 
 	@Override
 	public void start(Stage primaryStage) throws Exception {
+		//starts the server connection
 		serverConnection = new Server(data->{
 			Platform.runLater(()->{
+				//this is only to modify server GUI based on client request
 				switch (data.type){
 					case TEXT:
 						listItems.getItems().add(data.recipient+": "+data.message);
 						break;
 					case NEWUSER:
-						listUsers.getItems().add(String.valueOf(data.recipient));
-						listItems.getItems().add(data.recipient + " has joined!");
-						users.add(data.recipient);
+						listUsers.getItems().add(String.valueOf(data.code));
+						listItems.getItems().add(data.code + " has joined!");
+						users.add(data.code);
 						break;
 					case DISCONNECT:
-						listUsers.getItems().remove(String.valueOf(data.recipient));
-						listItems.getItems().add(data.recipient + " has disconnected!");
-						users.remove(data.recipient);
+						listUsers.getItems().remove(String.valueOf(data.code));
+						listItems.getItems().add(data.code + " has disconnected!");
+						users.remove(data.code);
 						break;
 					//case PLAYERMOVE: still figuring out if this fits in here
 				}
@@ -73,7 +75,7 @@ public class GuiServer extends Application{
 
 		pane.setCenter(lists);
 		pane.setStyle("-fx-font-family: 'serif'");
-		;
+
 
 		
 		primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
