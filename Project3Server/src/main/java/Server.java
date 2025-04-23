@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
+import com.sun.security.ntlm.Client;
 import javafx.application.Platform;
 import javafx.scene.control.ListView;
 /*
@@ -15,10 +16,16 @@ import javafx.scene.control.ListView;
 
 public class Server{
 
-	int count = 1;	
+	int count = 1;
+	//list of all clients including those not logged in
 	ArrayList<ClientThread> clients = new ArrayList<ClientThread>();
-//	ArrayList<ClientThread> loggedInClients = new ArrayList<>();
+
+	//map of usernames to client numbers
 	HashMap<String, Integer> loggedInClient = new HashMap<>();
+
+	//list of ongoing games
+	//todo fix when given game class
+	ArrayList<ClientGames> games = new ArrayList<>();
 	TheServer server;
 	private Consumer<Message> callback;
 	
@@ -72,134 +79,53 @@ public class Server{
 		{
 			switch(message.type){
 				case TEXT:
-					for(ClientThread t: clients){
-						//if code is to send to all or threads name matches send text
-						if(message.recipient.equals("Send to All") || message.recipient.equals(t.name) ) {
-							try {
-								t.out.writeObject(message);
-							} catch (Exception e) {
-								System.err.println("New User Error");
-							}
-						}
-					}
+					handeText(message);
 					break;
 				case NEWUSER:
 					//Updates existing clients about new client connection
-					for(ClientThread t : clients) {
-						if(this != t) {
-							try {
-								t.out.writeObject(message);
-							} catch (Exception e) {
-								System.err.println("New User Error");
-							}
-						}
-					}
+					handleNewUser(message);
 					break;
 				case DISCONNECT:
 					//tells remaining clients of a disconnected client
-					for(ClientThread t : clients) {
-						try {
-							t.out.writeObject(message);
-						} catch (Exception e) {
-							System.err.println("New User Error");
-						}
-					}
+					handleDisconnect(message);
 					break;
 				case USERS:
 					//sends array of existing clients to new client
-					for(ClientThread t : clients) {
-						if(this == t) {
-							try {
-								t.out.writeObject(message);
-							} catch (Exception e) {
-								System.err.println("New User Error");
-							}
-						}
-					}
+					handleUsers(message);
 					break;
 				case VALIDNAME:
-					int code = 0;
-					String attemptedUser = message.message.substring(0, message.message.indexOf(" "));
-					String attemptedPass = message.message.substring(message.message.indexOf(" ") + 1);
-
-					System.out.println(message.message);
-					try{
-						File f = new File("src/main/java/Users.txt");
-						Scanner myReader = new Scanner(f);
-
-						//default code when attempting to log in with invalid user/password combo
-						code = 404;
-
-
-						//loops through Users.txt to find for same username
-						while(myReader.hasNextLine()){
-							String line = myReader.nextLine();
-							String user = line.substring(0, line.indexOf(" "));
-
-							if(user.equals(attemptedUser)) {
-								//client is attempting to create account with existing username
-								if(message.code == 0){
-									code = 414;
-									break;
-								}
-								String pass = line.substring(line.indexOf(" ") + 1);
-								//client gave valid username and password combo when logging in
-								if(pass.equals(attemptedPass)) {
-									if(message.code == 1){
-										loggedInClient.put(attemptedUser, code);
-//										updateClients(new Message(loggedInClient));
-										code = 1;
-									}
-
-								}
-								else{//client gave valid username but invalid password when logging in
-									if(message.code == 1){
-										code = -1;
-									}
-								}
-								break;
-							}
-						}
-
-					}catch(FileNotFoundException e){
-						System.err.println("USER FILES NOT FOUND REALLY BIG ISSUE");
-					}
-					//user is attempting to create an account with a new username
-					if(code == 404 && message.code == 0){
-						try{
-							FileWriter myWriter = new FileWriter("src/main/java/Users.txt", true);
-							myWriter.write(attemptedUser + " " + attemptedPass + "\n");
-							myWriter.close();
-							code = 1;
-							loggedInClient.put(attemptedUser, code);
-//							updateClients(new Message(loggedInClient));
-						}catch(IOException e){
-							System.err.println("COULDN'T OPEN USERS FILE");
-						}
-					}
-					message.code = code;
-					for(ClientThread t : clients) {
-						if(this == t) {
-							try{
-								t.out.writeObject(message);
-							}catch(Exception e){
-								System.err.println("VALIDATION ERROR");
-							}
-
-						}
-						if(this != t){
-							try{
-								t.out.writeObject(new Message(attemptedUser, 2));
-							}catch(Exception e){
-								System.err.println("VALIDATION ERROR");
-							}
-						}
-					}
+					handleValidName(message);
 					break;
 
 				case PLAYERMOVE:
 					//todo implementation of game logic
 					break;
+				case LOOKINGFORGAME:
+					try{
+						this.out.writeObject(new Message("SERVER LOOKING"));
+					}catch(Exception e){
+						System.err.println("VALIDATION ERROR");
+					}
+					boolean found = false;
+					//looks inside games array for a game also looking for players
+					//if a game is found add this client to the game
+					for(ClientGames curr: games){
+						if(curr.needsPlayer()){
+							curr.addPlayer(this);
+							try{
+								this.out.writeObject(new Message("GAME FOUND"));
+								found = true;
+							}catch(Exception e){
+								System.err.println("VALIDATION ERROR");
+							}
+
+						}
+					}
+					//when there are no games online or no games are open create a new game
+					if(!found){
+						games.add(new ClientGames(this));
+					}
+
 			}
 		}
 
@@ -237,7 +163,129 @@ public class Server{
 			}
 		}//end of run
 
+		public void handleNewUser(Message message){
+			for(ClientThread t : clients) {
+				if(this != t) {
+					try {
+						t.out.writeObject(message);
+					} catch (Exception e) {
+						System.err.println("New User Error");
+					}
+				}
+			}
+		}
+		public void handleDisconnect(Message message){
+			for(ClientThread t : clients) {
+				try {
+					t.out.writeObject(message);
+				} catch (Exception e) {
+					System.err.println("New User Error");
+				}
+			}
+		}
+		public void handeText(Message message){
+			for(ClientThread t: clients){
+				//if code is to send to all or threads name matches send text
+				if(message.recipient.equals("Send to All") || message.recipient.equals(t.name) ) {
+					try {
+						t.out.writeObject(message);
+					} catch (Exception e) {
+						System.err.println("New User Error");
+					}
+				}
+			}
+		}
+		public void handleUsers(Message message){
+			for(ClientThread t : clients) {
+				if(this == t) {
+					try {
+						t.out.writeObject(message);
+					} catch (Exception e) {
+						System.err.println("New User Error");
+					}
+				}
+			}
+		}
+		public void handleValidName(Message message){
+			int code = 0;
+			String attemptedUser = message.message.substring(0, message.message.indexOf(" "));
+			String attemptedPass = message.message.substring(message.message.indexOf(" ") + 1);
+
+			System.out.println(message.message);
+			try{
+				File f = new File("src/main/java/Users.txt");
+				Scanner myReader = new Scanner(f);
+
+				//default code when attempting to log in with invalid user/password combo
+				code = 404;
+
+
+				//loops through Users.txt to find for same username
+				while(myReader.hasNextLine()){
+					String line = myReader.nextLine();
+					String user = line.substring(0, line.indexOf(" "));
+
+					if(user.equals(attemptedUser)) {
+						//client is attempting to create account with existing username
+						if(message.code == 0){
+							code = 414;
+							break;
+						}
+						String pass = line.substring(line.indexOf(" ") + 1);
+						//client gave valid username and password combo when logging in
+						if(pass.equals(attemptedPass)) {
+							if(message.code == 1){
+								loggedInClient.put(attemptedUser, code);
+								code = 1;
+							}
+
+						}
+						else{//client gave valid username but invalid password when logging in
+							if(message.code == 1){
+								code = -1;
+							}
+						}
+						break;
+					}
+				}
+
+			}catch(FileNotFoundException e){
+				System.err.println("USER FILES NOT FOUND REALLY BIG ISSUE");
+			}
+			//user is attempting to create an account with a new username
+			if(code == 404 && message.code == 0){
+				try{
+					FileWriter myWriter = new FileWriter("src/main/java/Users.txt", true);
+					myWriter.write(attemptedUser + " " + attemptedPass + "\n");
+					myWriter.close();
+					code = 1;
+					loggedInClient.put(attemptedUser, code);
+				}catch(IOException e){
+					System.err.println("COULDN'T OPEN USERS FILE");
+				}
+			}
+			message.code = code;
+			for(ClientThread t : clients) {
+				if(this == t) {
+					try{
+						t.out.writeObject(message);
+					}catch(Exception e){
+						System.err.println("VALIDATION ERROR");
+					}
+
+				}
+				if(this != t){
+					try{
+						t.out.writeObject(new Message(attemptedUser, 2));
+					}catch(Exception e){
+						System.err.println("VALIDATION ERROR");
+					}
+				}
+			}
+		}
+
 	}//end of client thread
+
 }
 
 

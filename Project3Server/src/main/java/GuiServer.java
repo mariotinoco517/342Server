@@ -57,6 +57,8 @@ public class GuiServer extends Application{
 						listItems.getItems().add(data.code + " has disconnected!");
 						users.remove(data.code);
 						break;
+					case LOOKINGFORGAME:
+						listItems.getItems().add(data.message + " is looking for a game");
 					//case PLAYERMOVE: still figuring out if this fits in here
 				}
 			});

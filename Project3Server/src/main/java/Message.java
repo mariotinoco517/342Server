@@ -26,9 +26,8 @@ public class Message implements Serializable {
 
     public Message(String mess, int identifier){
         if(identifier == 1){
-            type = MessageType.TEXT;
+            type = MessageType.LOOKINGFORGAME;
             message = mess;
-            code = -1;
         }else if(identifier == 2){
             type = MessageType.LOGGEDIN;
             message = mess;
@@ -52,6 +51,11 @@ public class Message implements Serializable {
         type = MessageType.VALIDNAME;
         message = username + " " + password;
         code = ForC;
+    }
+
+    public Message(String mess){
+        type = MessageType.SERVERMESSAGE;
+        message = mess;
     }
 }
 
