@@ -95,37 +95,12 @@ public class Server{
 				case VALIDNAME:
 					handleValidName(message);
 					break;
-
 				case PLAYERMOVE:
 					//todo implementation of game logic
 					break;
 				case LOOKINGFORGAME:
-					try{
-						this.out.writeObject(new Message("SERVER LOOKING"));
-					}catch(Exception e){
-						System.err.println("VALIDATION ERROR");
-					}
-					boolean found = false;
-					//looks inside games array for a game also looking for players
-					//if a game is found add this client to the game
-					for(ClientGames curr: games){
-						if(curr.needsPlayer() && !curr.getPlayerOne().name.equals(this.name)){
-							curr.addPlayer(this);
-							try{
-								this.out.writeObject(new Message(curr.getPlayerOne().name, "GAME FOUND"));
-								curr.getPlayerOne().out.writeObject(new Message(this.name, "GAME FOUND"));
-								found = true;
-							}catch(Exception e){
-								System.err.println("VALIDATION ERROR");
-							}
-
-						}
-					}
-					//when there are no games online or no games are open create a new game
-					if(!found){
-						games.add(new ClientGames(this));
-					}
-
+					handleLookingForGame(message);
+					break;
 			}
 		}
 
@@ -175,13 +150,50 @@ public class Server{
 			}
 		}
 		public void handleDisconnect(Message message){
-			for(ClientThread t : clients) {
-				try {
-					t.out.writeObject(message);
-				} catch (Exception e) {
-					System.err.println("New User Error");
+			if(message.message.equals("EXIT GAME")){
+				for(ClientThread t : clients) {
+					if(t.name.equals(message.recipient)){
+						try{
+							t.out.writeObject(new Message("WINNER"));
+							this.out.writeObject(new Message("LOSER"));
+							for(int i = games.size() - 1; i >= 0; i--){
+								if(games.get(i).getPlayerOne().name.equals(t.name) || games.get(i).getPlayerTwo().name.equals(t.name)){
+									if(games.get(i).getPlayerOne().name.equals(name) || games.get(i).getPlayerTwo().name.equals(name)){
+										games.remove(i);
+									}
+								}
+							}
+						}catch(Exception e){
+							System.err.println("EXIT GAME ERROR");
+						}
+
+					}
+				}
+//				String opp = message.recipient;
+//				ClientThread opponent = clients.get((loggedInClient.get(opp)));
+//				try{
+//					//todo save users win/loss on server
+//					for(int i = games.size() - 1; i >= 0; i--){
+//						if(games.get(i).getPlayerOne().name.equals(opp) || games.get(i).getPlayerTwo().name.equals(opp)){
+//							if(games.get(i).getPlayerOne().name.equals(name) || games.get(i).getPlayerTwo().name.equals(name)){
+//								games.remove(i);
+//							}
+//						}
+//					}
+//				}catch(Exception e){
+//					System.err.println("EXIT GAME ERROR");
+//				}
+
+			}else{
+				for(ClientThread t : clients) {
+					try {
+						t.out.writeObject(message);
+					} catch (Exception e) {
+						System.err.println("New User Error");
+					}
 				}
 			}
+
 		}
 		public void handeText(Message message){
 			for(ClientThread t: clients){
@@ -284,6 +296,33 @@ public class Server{
 						System.err.println("VALIDATION ERROR");
 					}
 				}
+			}
+		}
+		public void handleLookingForGame(Message message){
+			try{
+				this.out.writeObject(new Message("SERVER LOOKING"));
+			}catch(Exception e){
+				System.err.println("VALIDATION ERROR");
+			}
+			boolean found = false;
+			//looks inside games array for a game also looking for players
+			//if a game is found add this client to the game
+			for(ClientGames curr: games){
+				if(curr.needsPlayer() && !curr.getPlayerOne().name.equals(this.name)){
+					curr.addPlayer(this);
+					try{
+						this.out.writeObject(new Message(curr.getPlayerOne().name, "GAME FOUND"));
+						curr.getPlayerOne().out.writeObject(new Message(this.name, "GAME FOUND"));
+						found = true;
+					}catch(Exception e){
+						System.err.println("VALIDATION ERROR");
+					}
+
+				}
+			}
+			//when there are no games online or no games are open create a new game
+			if(!found){
+				games.add(new ClientGames(this));
 			}
 		}
 

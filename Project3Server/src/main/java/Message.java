@@ -38,6 +38,8 @@ public class Message implements Serializable {
     public Message(String rec, String mess){
         if(mess.equals("GAME FOUND")){
             type = MessageType.SERVERMESSAGE;
+        }else if(mess.equals("EXIT GAME")){
+            type = MessageType.DISCONNECT;
         }else{
             type = MessageType.TEXT;
         }
