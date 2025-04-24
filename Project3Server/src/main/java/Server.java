@@ -24,7 +24,6 @@ public class Server{
 	HashMap<String, Integer> loggedInClient = new HashMap<>();
 
 	//list of ongoing games
-	//todo fix when given game class
 	ArrayList<ClientGames> games = new ArrayList<>();
 	TheServer server;
 	private Consumer<Message> callback;
@@ -194,6 +193,7 @@ public class Server{
 					} catch (Exception e) {
 						System.err.println("TEXT SEND ERROR");
 					}
+					break;
 				}
 			}
 		}
