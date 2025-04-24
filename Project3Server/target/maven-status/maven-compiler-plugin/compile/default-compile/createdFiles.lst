@@ -2,6 +2,7 @@ GuiServer.class
 GameLogic.class
 MessageType.class
 Server$ClientThread.class
+ClientGames.class
 GuiServer$2.class
 Server$1.class
 Server.class

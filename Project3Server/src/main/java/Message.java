@@ -36,10 +36,13 @@ public class Message implements Serializable {
     }
 
     public Message(String rec, String mess){
-        type = MessageType.TEXT;
+        if(mess.equals("GAME FOUND")){
+            type = MessageType.SERVERMESSAGE;
+        }else{
+            type = MessageType.TEXT;
+        }
         message = mess;
         recipient = rec;
-        code = 1;
     }
 
     public Message(HashMap<String, Integer> user){

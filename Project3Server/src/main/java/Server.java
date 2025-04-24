@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Scanner;
 import java.util.function.Consumer;
 
-import com.sun.security.ntlm.Client;
+//import com.sun.security.ntlm.Client;
 import javafx.application.Platform;
 import javafx.scene.control.ListView;
 /*
@@ -110,10 +110,11 @@ public class Server{
 					//looks inside games array for a game also looking for players
 					//if a game is found add this client to the game
 					for(ClientGames curr: games){
-						if(curr.needsPlayer()){
+						if(curr.needsPlayer() && !curr.getPlayerOne().name.equals(this.name)){
 							curr.addPlayer(this);
 							try{
-								this.out.writeObject(new Message("GAME FOUND"));
+								this.out.writeObject(new Message(curr.getPlayerOne().name, "GAME FOUND"));
+								curr.getPlayerOne().out.writeObject(new Message(this.name, "GAME FOUND"));
 								found = true;
 							}catch(Exception e){
 								System.err.println("VALIDATION ERROR");
@@ -186,11 +187,12 @@ public class Server{
 		public void handeText(Message message){
 			for(ClientThread t: clients){
 				//if code is to send to all or threads name matches send text
-				if(message.recipient.equals("Send to All") || message.recipient.equals(t.name) ) {
+				if(message.recipient.equals(t.name) ) {
 					try {
+						message.recipient = this.name;
 						t.out.writeObject(message);
 					} catch (Exception e) {
-						System.err.println("New User Error");
+						System.err.println("TEXT SEND ERROR");
 					}
 				}
 			}
@@ -269,6 +271,7 @@ public class Server{
 				if(this == t) {
 					try{
 						t.out.writeObject(message);
+						t.name = attemptedUser;
 					}catch(Exception e){
 						System.err.println("VALIDATION ERROR");
 					}
