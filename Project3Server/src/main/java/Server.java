@@ -154,8 +154,11 @@ public class Server{
 				for(ClientThread t : clients) {
 					if(t.name.equals(message.recipient)){
 						try{
+							//tells opponent they won
 							t.out.writeObject(new Message("WINNER"));
+							//tells client that exited that they lose
 							this.out.writeObject(new Message("LOSER"));
+							//deletes game from the games arrayList since it is over
 							for(int i = games.size() - 1; i >= 0; i--){
 								if(games.get(i).getPlayerOne().name.equals(t.name) || games.get(i).getPlayerTwo().name.equals(t.name)){
 									if(games.get(i).getPlayerOne().name.equals(name) || games.get(i).getPlayerTwo().name.equals(name)){
@@ -169,21 +172,6 @@ public class Server{
 
 					}
 				}
-//				String opp = message.recipient;
-//				ClientThread opponent = clients.get((loggedInClient.get(opp)));
-//				try{
-//					//todo save users win/loss on server
-//					for(int i = games.size() - 1; i >= 0; i--){
-//						if(games.get(i).getPlayerOne().name.equals(opp) || games.get(i).getPlayerTwo().name.equals(opp)){
-//							if(games.get(i).getPlayerOne().name.equals(name) || games.get(i).getPlayerTwo().name.equals(name)){
-//								games.remove(i);
-//							}
-//						}
-//					}
-//				}catch(Exception e){
-//					System.err.println("EXIT GAME ERROR");
-//				}
-
 			}else{
 				for(ClientThread t : clients) {
 					try {
@@ -281,8 +269,19 @@ public class Server{
 			message.code = code;
 			for(ClientThread t : clients) {
 				if(this == t) {
+					//tell client if its username and password was valid
 					try{
+						int[] winLoss = getWinLoss(attemptedUser);
+//						try{
+//							winLoss = getWinLoss(attemptedUser);
+//						}catch(Exception e){
+//							System.err.println("ARRAY ISSUES");
+//						}
+
+//						winLoss[0] = 2;
+//						winLoss[1] = 10;
 						t.out.writeObject(message);
+						t.out.writeObject(new Message(attemptedUser, attemptedPass, code, winLoss));
 						t.name = attemptedUser;
 					}catch(Exception e){
 						System.err.println("VALIDATION ERROR");
@@ -290,6 +289,7 @@ public class Server{
 
 				}
 				if(this != t){
+					//tell other clients of a new logged in client
 					try{
 						t.out.writeObject(new Message(attemptedUser, 2));
 					}catch(Exception e){
@@ -324,6 +324,36 @@ public class Server{
 			if(!found){
 				games.add(new ClientGames(this));
 			}
+		}
+
+		public int[] getWinLoss(String attemptedUser){
+			int[] winLoss = new int[2];
+			try{
+				File f = new File("src/main/java/WL.txt");
+				Scanner myReader = new Scanner(f);
+
+//				loops through Users.txt to find for same username
+				while(myReader.hasNextLine()){
+					String line = myReader.nextLine();
+					String[] parts = line.split(" ");
+
+					if(parts[0].equals(attemptedUser)) {
+						//saves the users win and losses
+						winLoss[0] = Integer.parseInt(parts[1]);
+						winLoss[1] = Integer.parseInt(parts[2]);
+
+					}
+				}
+
+			}catch(FileNotFoundException e){
+				System.err.println("USER FILES NOT FOUND REALLY BIG ISSUE");
+			}
+
+			return winLoss;
+		}
+
+		public void updateWinLoss(String user, int losses, int wins){
+			
 		}
 
 	}//end of client thread

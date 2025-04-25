@@ -11,6 +11,7 @@ public class Message implements Serializable {
     HashMap<String, Integer> loggedInClient;
     int code;
     String recipient;
+    int[] wl;
 
     public Message(int i, int connect){
         if(connect == 1) {
@@ -56,6 +57,12 @@ public class Message implements Serializable {
         type = MessageType.VALIDNAME;
         message = username + " " + password;
         code = ForC;
+    }
+    public Message(String username, String password, int ForC, int[] w){
+        type = MessageType.VALIDNAME;
+        message = username + " " + password;
+        code = ForC;
+        wl = w;
     }
 
     public Message(String mess){
