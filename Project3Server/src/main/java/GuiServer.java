@@ -55,7 +55,7 @@ public class GuiServer extends Application{
 					case DISCONNECT:
 						listUsers.getItems().remove(String.valueOf(data.code));
 						listItems.getItems().add(data.code + " has disconnected!");
-						users.remove(data.code);
+//						users.remove(data.code);
 						break;
 					case LOOKINGFORGAME:
 						listItems.getItems().add(data.message + " is looking for a game");

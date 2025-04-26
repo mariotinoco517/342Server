@@ -98,50 +98,7 @@ public class Server{
 					handleValidName(message);
 					break;
 				case PLAYERMOVE:
-					//todo implementation of game logic
-					System.err.println(name + " TRYING TO MOVE: " + message.code);
-					for(ClientGames game : games){
-						if(game.getPlayerOne().name.equals(name)){
-							System.out.println(name + " trying to move");
-							int code = game.currentGame.makeMove(message.code, 1);
-							try{
-								if(code == 2){
-									games.remove(game);
-									wins++;
-									game.getPlayerTwo().losses++;
-									this.out.writeObject(new Message("WINNER"));
-									game.getPlayerTwo().out.writeObject(new Message("LOSER"));
-
-								}else{
-									this.out.writeObject(new Message(code, name, message.code));
-									game.getPlayerTwo().out.writeObject(new Message(code, name, message.code));
-								}
-
-							}catch(Exception e){
-								System.err.println("Error sending move validation");
-							}
-						}
-						if(game.getPlayerTwo().name.equals(name)){
-							System.out.println(name + " trying to move");
-							int code = game.currentGame.makeMove(message.code, 2);
-							try{
-								if(code == 2){
-									wins++;
-									game.getPlayerTwo().losses++;
-									games.remove(game);
-									this.out.writeObject(new Message("WINNER"));
-									game.getPlayerTwo().out.writeObject(new Message("LOSER"));
-								}else{
-									this.out.writeObject(new Message(code, name, message.code));
-									game.getPlayerOne().out.writeObject(new Message(code, name, message.code));
-								}
-
-							}catch(Exception e){
-								System.err.println("Error sending move validation");
-							}
-						}
-						break;
-					}
+					handleMove(message);
 					break;
 				case LOOKINGFORGAME:
 					handleLookingForGame(message);
@@ -189,6 +146,7 @@ public class Server{
 				if(this != t) {
 					try {
 						t.out.writeObject(message);
+						System.out.println("Server has a new client #" + count);
 					} catch (Exception e) {
 						System.err.println("New User Error");
 					}
@@ -200,6 +158,7 @@ public class Server{
 				for(ClientThread t : clients) {
 					if(t.name.equals(message.recipient)){
 						try{
+							System.out.println(name + " left the game giving " + t.name + " the win");
 							//tells opponent they won
 							t.out.writeObject(new Message("WINNER"));
 							t.wins++;
@@ -209,9 +168,9 @@ public class Server{
 							//deletes game from the games arrayList since it is over
 							for(int i = games.size() - 1; i >= 0; i--){
 								if(games.get(i).getPlayerOne().name.equals(t.name) || games.get(i).getPlayerTwo().name.equals(t.name)){
-									if(games.get(i).getPlayerOne().name.equals(name) || games.get(i).getPlayerTwo().name.equals(name)){
+//									if(games.get(i).getPlayerOne().name.equals(name) || games.get(i).getPlayerTwo().name.equals(name)){
 										games.remove(i);
-									}
+//									}
 								}
 							}
 						}catch(Exception e){
@@ -238,6 +197,7 @@ public class Server{
 					try {
 						message.recipient = this.name;
 						t.out.writeObject(message);
+						System.out.println(name + " sent a text saying '" + message.message + "' to " + t.name);
 					} catch (Exception e) {
 						System.err.println("TEXT SEND ERROR");
 					}
@@ -250,6 +210,7 @@ public class Server{
 				if(this == t) {
 					try {
 						t.out.writeObject(message);
+						System.out.println("Client #" + t.count + " got a list of users currently online");
 					} catch (Exception e) {
 						System.err.println("New User Error");
 					}
@@ -261,7 +222,7 @@ public class Server{
 			String attemptedUser = message.message.substring(0, message.message.indexOf(" "));
 			String attemptedPass = message.message.substring(message.message.indexOf(" ") + 1);
 
-			System.out.println(message.message);
+			System.err.println("Attempting to validate user for client #" + count);
 			try{
 				File f = new File("src/main/java/Users.txt");
 				Scanner myReader = new Scanner(f);
@@ -278,6 +239,7 @@ public class Server{
 					if(user.equals(attemptedUser)) {
 						//client is attempting to create account with existing username
 						if(message.code == 0){
+							System.out.println("Client #" + count + " tried to make an account with a taken username");
 							code = 414;
 							break;
 						}
@@ -285,6 +247,7 @@ public class Server{
 						//client gave valid username and password combo when logging in
 						if(pass.equals(attemptedPass)) {
 							if(message.code == 1){
+								System.out.println("Client #" + count + " logged into account with username " + attemptedUser);
 								loggedInClient.put(attemptedUser, code);
 								code = 1;
 							}
@@ -292,6 +255,7 @@ public class Server{
 						}
 						else{//client gave valid username but invalid password when logging in
 							if(message.code == 1){
+								System.out.println("Client #" + count + " couldn't log into account with username " + attemptedUser);
 								code = -1;
 							}
 						}
@@ -310,6 +274,7 @@ public class Server{
 					myWriter.close();
 					code = 1;
 					loggedInClient.put(attemptedUser, code);
+					System.out.println("Client #" + count + " created a new account with username " + attemptedUser);
 				}catch(IOException e){
 					System.err.println("COULDN'T OPEN USERS FILE");
 				}
@@ -333,7 +298,10 @@ public class Server{
 				if(this != t){
 					//tell other clients of a new logged in client
 					try{
-						t.out.writeObject(new Message(attemptedUser, -2));
+						if(code == 1){
+							System.out.println("Told client #" + t.count + " that client #" + count + " has username " + attemptedUser);
+							t.out.writeObject(new Message(attemptedUser, -2));
+						}
 					}catch(Exception e){
 						System.err.println("VALIDATION ERROR");
 					}
@@ -341,7 +309,7 @@ public class Server{
 			}
 		}
 		public void handleLookingForGame(Message message){
-			System.err.println("LOOKING FOR GAME");
+			System.err.println(name + " is looking for a game");
 			try{
 				this.out.writeObject(new Message("SERVER LOOKING"));
 			}catch(Exception e){
@@ -352,6 +320,7 @@ public class Server{
 			//if a game is found add this client to the game
 			for(ClientGames curr: games){
 				if(curr.needsPlayer() && !curr.getPlayerOne().name.equals(this.name)){
+					System.out.println(name + " found a game against " + curr.getPlayerOne().name);
 					curr.addPlayer(this);
 					try{
 						this.out.writeObject(new Message(curr.getPlayerOne().name, "GAME FOUND"));
@@ -365,7 +334,59 @@ public class Server{
 			}
 			//when there are no games online or no games are open create a new game
 			if(!found){
+				System.out.println(name + " didn't find a game so they made one themselves");
 				games.add(new ClientGames(this));
+			}
+		}
+		public void handleMove(Message message){
+			System.err.println(name + " TRYING TO MOVE: " + message.code);
+			ClientGames remove = null;
+			int code = 0;
+			for(ClientGames game : games){
+				if(game.getPlayerOne().name.equals(name)){
+					System.out.println(name + " is attempting to drop a coin in column " + message.code);
+					code = game.currentGame.makeMove(message.code, 1);
+					try{
+						if(code == 2){
+							remove = game;
+//							games.remove(game);
+							wins++;
+							game.getPlayerTwo().losses++;
+							this.out.writeObject(new Message("WINNER"));
+							game.getPlayerTwo().out.writeObject(new Message("LOSER"));
+							System.out.println(name + " has won the game!");
+						}else{
+							this.out.writeObject(new Message(code, name, message.code));
+							game.getPlayerTwo().out.writeObject(new Message(code, name, message.code));
+						}
+
+					}catch(Exception e){
+						System.err.println("Error sending move validation");
+					}
+				}else if(game.getPlayerTwo().name.equals(name)){
+					System.out.println(name + " is attempting to drop a coin in column " + message.code);
+					code = game.currentGame.makeMove(message.code, 2);
+					try{
+						if(code == 2){
+							remove = game;
+							wins++;
+//							game.getPlayerTwo().losses++;
+							games.remove(game);
+							this.out.writeObject(new Message("WINNER"));
+							game.getPlayerTwo().out.writeObject(new Message("LOSER"));
+							System.out.println(name + " has won the game!");
+						}else{
+							this.out.writeObject(new Message(code, name, message.code));
+							game.getPlayerOne().out.writeObject(new Message(code, name, message.code));
+						}
+
+					}catch(Exception e){
+						System.err.println("Error sending move validation");
+					}
+				}
+			}
+			if(code == 2){
+				games.remove(remove);
 			}
 		}
 
