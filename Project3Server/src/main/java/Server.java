@@ -103,6 +103,10 @@ public class Server{
 				case LOOKINGFORGAME:
 					handleLookingForGame(message);
 					break;
+				case CHANGENAME:
+					handleChangeName(message);
+				case REMATCH:
+					handleRematch(message);
 			}
 		}
 
@@ -385,8 +389,90 @@ public class Server{
 					}
 				}
 			}
-			if(code == 2){
-				games.remove(remove);
+//			if(code == 2){
+//				games.remove(remove);
+//			}
+		}
+		public void handleChangeName(Message message){
+			String fullFile = "";
+			try{
+				File f = new File("src/main/java/Users.txt");
+				Scanner myReader = new Scanner(f);
+
+//				loops through Users.txt to find for same username
+				while(myReader.hasNextLine()){
+					String line = myReader.nextLine();
+					String[] parts = line.split(" ");
+
+					if(parts[0].equals(name)) {
+						//saves the users win and losses
+						fullFile = fullFile.concat(message.message + " " + parts[1] + "\n");
+					}else{
+						fullFile = fullFile.concat(line + "\n");
+					}
+				}
+			}catch(FileNotFoundException e){
+				System.err.println("USER FILES NOT FOUND REALLY BIG ISSUE");
+			}
+			try{
+				FileWriter myWriter = new FileWriter("src/main/java/Users.txt", false);
+				myWriter.write(fullFile);
+				myWriter.close();
+			}catch(IOException e){
+				System.err.println("COULDN'T OPEN USERS FILE");
+			}
+			try{
+				System.out.println(name + " changed their name to " + message.message);
+				name = message.message;
+				this.out.writeObject(new Message(name, "", 0));
+			}catch(Exception e){
+				System.err.println("COULDN'T UPDATE NAME");
+			}
+		}
+		public void handleRematch(Message message){
+			if(message.code == 0){
+				System.out.println(name + " rejected to rematch");
+				ClientGames delete = null;
+				for(ClientGames game : games){
+					if(game.getPlayerOne().name.equals(name) || game.getPlayerTwo().name.equals(name)){
+						if(game.getPlayerOne().name.equals(name)){
+							try{
+								game.getPlayerTwo().out.writeObject(new Message(0, "REMATCH"));
+							}catch(Exception e){
+								System.err.println("ERROR IN DECLINING REMATCH");
+							}
+						}else if(game.getPlayerTwo().name.equals(name)){
+							try{
+								game.getPlayerOne().out.writeObject(new Message(0, "REMATCH"));
+							}catch(Exception e){
+								System.err.println("ERROR IN DECLINING REMATCH");
+							}
+						}
+						delete = game;
+					}
+				}
+				games.remove(delete);
+			}
+			if(message.code == 1){
+				System.out.println(name + " accepted the rematch");
+				for(ClientGames game : games){
+					if(game.getPlayerOne().name.equals(name) || game.getPlayerTwo().name.equals(name)){
+						game.currentGame.clearGame();
+						if(game.getPlayerOne().name.equals(name)){
+							try{
+								game.getPlayerTwo().out.writeObject(new Message(1, "REMATCH"));
+							}catch(Exception e){
+								System.err.println("ERROR IN REMATCH");
+							}
+						}else if(game.getPlayerTwo().name.equals(name)){
+							try{
+								game.getPlayerOne().out.writeObject(new Message(1, "REMATCH"));
+							}catch(Exception e){
+								System.err.println("ERROR IN REMATCH");
+							}
+						}
+					}
+				}
 			}
 		}
 

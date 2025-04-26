@@ -141,4 +141,9 @@ public class GameLogic {
         counter = 0;
         return false;
     }
+
+    public void clearGame(){
+        fillInitialBoard();
+        playerToPlace = 1;
+    }
 }

@@ -64,10 +64,15 @@ public class Message implements Serializable {
         code = ForC;
     }
     public Message(String username, String password, int ForC, int[] w){
-        type = MessageType.VALIDNAME;
-        message = username + " " + password;
-        code = ForC;
-        wl = w;
+        if(password.isEmpty()){
+            type = MessageType.CHANGENAME;
+            message = username;
+        }else{
+            type = MessageType.VALIDNAME;
+            message = username + " " + password;
+            code = ForC;
+            wl = w;
+        }
     }
     public Message(String username, int losses, int wins){
         type = MessageType.UPDATESTATS;
@@ -81,6 +86,15 @@ public class Message implements Serializable {
         code = c;
         move = m;
         message = mess;
+    }
+    public Message(int re){
+        code = re;
+        type = MessageType.REMATCH;
+    }
+    public Message(int re, String mess){
+        type = MessageType.SERVERMESSAGE;
+        message = mess;
+        code = re;
     }
     public Message(String mess){
         type = MessageType.SERVERMESSAGE;
