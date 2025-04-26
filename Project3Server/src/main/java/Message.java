@@ -10,6 +10,7 @@ public class Message implements Serializable {
     String message;
     HashMap<String, Integer> loggedInClient;
     int code;
+    int move;
     String recipient;
     int[] wl;
 
@@ -26,12 +27,16 @@ public class Message implements Serializable {
     }
 
     public Message(String mess, int identifier){
-        if(identifier == 1){
+        if(identifier == -1){
             type = MessageType.LOOKINGFORGAME;
             message = mess;
-        }else if(identifier == 2){
+        }else if(identifier == -2){
             type = MessageType.LOGGEDIN;
             message = mess;
+        }else{
+            type = MessageType.PLAYERMOVE;
+            message = mess;
+            code = identifier;
         }
 
     }
@@ -64,7 +69,19 @@ public class Message implements Serializable {
         code = ForC;
         wl = w;
     }
-
+    public Message(String username, int losses, int wins){
+        type = MessageType.UPDATESTATS;
+        message = username;
+        wl = new int[2];
+        wl[0] = losses;
+        wl[1] = wins;
+    }
+    public Message(int c, String mess, int m){
+        type = MessageType.PLAYERMOVE;
+        code = c;
+        move = m;
+        message = mess;
+    }
     public Message(String mess){
         type = MessageType.SERVERMESSAGE;
         message = mess;

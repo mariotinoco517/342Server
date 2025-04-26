@@ -66,6 +66,8 @@ public class Server{
 		Socket connection;
 		int count;
 		String name;
+		int wins;
+		int losses;
 		ObjectInputStream in;
 		ObjectOutputStream out;
 			
@@ -97,6 +99,49 @@ public class Server{
 					break;
 				case PLAYERMOVE:
 					//todo implementation of game logic
+					System.err.println(name + " TRYING TO MOVE: " + message.code);
+					for(ClientGames game : games){
+						if(game.getPlayerOne().name.equals(name)){
+							System.out.println(name + " trying to move");
+							int code = game.currentGame.makeMove(message.code, 1);
+							try{
+								if(code == 2){
+									games.remove(game);
+									wins++;
+									game.getPlayerTwo().losses++;
+									this.out.writeObject(new Message("WINNER"));
+									game.getPlayerTwo().out.writeObject(new Message("LOSER"));
+
+								}else{
+									this.out.writeObject(new Message(code, name, message.code));
+									game.getPlayerTwo().out.writeObject(new Message(code, name, message.code));
+								}
+
+							}catch(Exception e){
+								System.err.println("Error sending move validation");
+							}
+						}
+						if(game.getPlayerTwo().name.equals(name)){
+							System.out.println(name + " trying to move");
+							int code = game.currentGame.makeMove(message.code, 2);
+							try{
+								if(code == 2){
+									wins++;
+									game.getPlayerTwo().losses++;
+									games.remove(game);
+									this.out.writeObject(new Message("WINNER"));
+									game.getPlayerTwo().out.writeObject(new Message("LOSER"));
+								}else{
+									this.out.writeObject(new Message(code, name, message.code));
+									game.getPlayerOne().out.writeObject(new Message(code, name, message.code));
+								}
+
+							}catch(Exception e){
+								System.err.println("Error sending move validation");
+							}
+						}
+						break;
+					}
 					break;
 				case LOOKINGFORGAME:
 					handleLookingForGame(message);
@@ -129,6 +174,7 @@ public class Server{
 				}
 				catch(Exception e) {
 					e.printStackTrace();
+					updateWinLoss();
 					Message discon = new Message(count, 0);
 					callback.accept(discon);
 					updateClients(discon);
@@ -156,8 +202,10 @@ public class Server{
 						try{
 							//tells opponent they won
 							t.out.writeObject(new Message("WINNER"));
+							t.wins++;
 							//tells client that exited that they lose
 							this.out.writeObject(new Message("LOSER"));
+							losses++;
 							//deletes game from the games arrayList since it is over
 							for(int i = games.size() - 1; i >= 0; i--){
 								if(games.get(i).getPlayerOne().name.equals(t.name) || games.get(i).getPlayerTwo().name.equals(t.name)){
@@ -272,14 +320,8 @@ public class Server{
 					//tell client if its username and password was valid
 					try{
 						int[] winLoss = getWinLoss(attemptedUser);
-//						try{
-//							winLoss = getWinLoss(attemptedUser);
-//						}catch(Exception e){
-//							System.err.println("ARRAY ISSUES");
-//						}
-
-//						winLoss[0] = 2;
-//						winLoss[1] = 10;
+						losses = winLoss[0];
+						wins = winLoss[1];
 						t.out.writeObject(message);
 						t.out.writeObject(new Message(attemptedUser, attemptedPass, code, winLoss));
 						t.name = attemptedUser;
@@ -291,7 +333,7 @@ public class Server{
 				if(this != t){
 					//tell other clients of a new logged in client
 					try{
-						t.out.writeObject(new Message(attemptedUser, 2));
+						t.out.writeObject(new Message(attemptedUser, -2));
 					}catch(Exception e){
 						System.err.println("VALIDATION ERROR");
 					}
@@ -299,6 +341,7 @@ public class Server{
 			}
 		}
 		public void handleLookingForGame(Message message){
+			System.err.println("LOOKING FOR GAME");
 			try{
 				this.out.writeObject(new Message("SERVER LOOKING"));
 			}catch(Exception e){
@@ -328,6 +371,7 @@ public class Server{
 
 		public int[] getWinLoss(String attemptedUser){
 			int[] winLoss = new int[2];
+			boolean found = false;
 			try{
 				File f = new File("src/main/java/WL.txt");
 				Scanner myReader = new Scanner(f);
@@ -339,9 +383,20 @@ public class Server{
 
 					if(parts[0].equals(attemptedUser)) {
 						//saves the users win and losses
+						found = true;
 						winLoss[0] = Integer.parseInt(parts[1]);
 						winLoss[1] = Integer.parseInt(parts[2]);
 
+					}
+				}
+
+				if(!found){
+					try{
+						FileWriter myWriter = new FileWriter("src/main/java/WL.txt", true);
+						myWriter.write(attemptedUser + " 0 0\n");
+						myWriter.close();
+					}catch(IOException e){
+						System.err.println("COULDN'T OPEN USERS FILE");
 					}
 				}
 
@@ -352,8 +407,35 @@ public class Server{
 			return winLoss;
 		}
 
-		public void updateWinLoss(String user, int losses, int wins){
-			
+		public void updateWinLoss(){
+			String fullFile = "";
+			try{
+				File f = new File("src/main/java/WL.txt");
+				Scanner myReader = new Scanner(f);
+
+//				loops through Users.txt to find for same username
+				while(myReader.hasNextLine()){
+					String line = myReader.nextLine();
+					String[] parts = line.split(" ");
+
+					if(parts[0].equals(name)) {
+						//saves the users win and losses
+						fullFile = fullFile.concat(name + " " + losses + " " + wins + "\n");
+					}else{
+						fullFile = fullFile.concat(line + "\n");
+					}
+				}
+			}catch(FileNotFoundException e){
+				System.err.println("USER FILES NOT FOUND REALLY BIG ISSUE");
+			}
+			try{
+				FileWriter myWriter = new FileWriter("src/main/java/WL.txt", false);
+				myWriter.write(fullFile);
+				myWriter.close();
+			}catch(IOException e){
+				System.err.println("COULDN'T OPEN USERS FILE");
+			}
+//			System.out.println(fullFile);
 		}
 
 	}//end of client thread

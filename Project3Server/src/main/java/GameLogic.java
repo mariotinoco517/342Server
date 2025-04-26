@@ -3,23 +3,40 @@ public class GameLogic {
     private static final int row = 6;
     int[][] Grid;
     int counter = 0;
+    int playerToPlace = 1;
 
-
+    public GameLogic() {
+        fillInitialBoard();
+    }
     //I made it an int so we can represent... 0 = invalid move ... 1 = valid move ... 2 = won game
     public int makeMove(int colCoor, int playerNum){
-        if(Grid == null){
-            fillInitialBoard();
+        if(playerNum != playerToPlace){
+            System.err.println("ERROR IN PLAYERTOPALCE VALIDATION");
+            return 0;
         }
         if(colCoor > 6 || colCoor < 0){ // this should never be the case but just in case
+            System.err.println("ERROR IN COL VALIDATION");
             return 0;
         }
         if(!canPlace(colCoor)){
+            System.err.println("CANNOT PLACE IN THE COLUMN");
             return 0;
         }
+        boolean placed = false;
         for(int x = 0; x < row; ++x){
-            if(Grid[x][colCoor] != -1){
-                Grid[x-1][colCoor] = playerNum;
+            if(Grid[x][colCoor] == -1){
+                Grid[x][colCoor] = playerNum;
+                placed = true;
+                if(playerToPlace == 1){
+                    playerToPlace = 2;
+                }else{
+                    playerToPlace = 1;
+                }
+                break;
             }
+        }
+        if(!placed){
+            return 0;
         }
         if(ifWin(playerNum)){
             return 2;
@@ -38,8 +55,12 @@ public class GameLogic {
         if(Grid == null){
             fillInitialBoard();
         }
-        if(Grid[0][colCoor] == -1){
-            return true;
+        for(int x = 0; x < row; ++x){
+            for(int y = 0; y < col; ++y){
+                if(Grid[x][y] == -1){
+                    return true;
+                }
+            }
         }
         return false;
     }
